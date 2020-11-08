@@ -1,178 +1,164 @@
 <h1 align="center">
     <br>
-    Av1an
+    PyParallelEncode
     </br>
 </h1>
 
-<h2 align="center">A cross-platform framework to streamline encoding</h2>
-
-![alt text](https://cdn.discordapp.com/attachments/696849974666985494/774368268860915732/av1an_pick2.png)
+<h2 align="center">Framework to split and encode videos</h2>
 
 <h4 align="center">
-<a href="https://discord.gg/Ar8MvJh"><img src="https://discordapp.com/api/guilds/696849974230515794/embed.png" alt="Discord server" /></a>
-<img src="https://github.com/master-of-zen/Av1an/workflows/tests/badge.svg">
-<a href="https://codeclimate.com/github/master-of-zen/Av1an/maintainability"><img src="https://api.codeclimate.com/v1/badges/41ea7ad221dcdad3fe8d/maintainability" />
-<img= src="https://app.codacy.com/manual/Grenight/Av1an?utm_source=github.com&utm_medium=referral&utm_content=master-of-zen/Av1an&utm_campaign=Badge_Grade_Dashboard"></a>
-<a href="https://www.codacy.com/manual/Grenight/Av1an?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=master-of-zen/Av1an&amp;utm_campaign=Badge_Grade"><img src="https://api.codacy.com/project/badge/Grade/4632dbb2f6f34ad199142c01a3eb2aaf"/></a>
 </h4>
-<h2 align="center">Easy, Fast, Efficient and Feature Rich</h2>
+<h2 align="center">Easy, powerful, all-in-one encoding based on Av1an</h2>
 
-An easy way to start using VVC / AV1 / HEVC / H264 / VP9 / VP8 encoding. AOM, RAV1E, SVT-AV1, SVT-VP9, VPX, x265, x264, VTM are supported.
+Output to AV1 / VVC / HEVC / H264 / VP9 / VP8. Input from all formats supported by ffmpeg.
 
-Example with default parameters:
+Encoders supported: AOM, RAV1E, SVT-AV1, VTM, x265, x264, SVT-VP9, VPX.
 
-    av1an -i input
+Python example with default parameters:
 
-With your own parameters:
+    from pathlib import Path
+    from parallelencode.core import run
+    params = {"input": Path("input.mp4")}
+    run(params)
 
-    av1an -i input -enc aom -v "--cpu-used=3 --end-usage=q --cq-level=30 --threads=8" -w 10
-    --split_method aom_keyframes --vmaf_target 95 --vmaf_path "vmaf_v0.6.1.pkl" -min_q 20 -max_q 60
-    -ff "-vf scale=-1:1080" -a "-c:a libopus -ac 2 -b:a 192k" -s scenes.csv -log my_log -o output
+<h2 align="center">Parameters</h2>
 
-<h2 align="center">Usage</h2>
+    input                   Path: Input file(s)
 
-    -i   --file_path        Input file(s) (relative or absolute path)
+    output_file             Path: output file to create (default: (input file name)_(encoder).mkv)
+                            Recommended to end with .mkv to avoid errors
 
-    -o   --output_file      Name/Path for output file (Default: (input file name)_(encoder).mkv)
-                            Output file ending is always `.mkv`
-
-    -enc --encoder          Encoder to use 
+    encoder                 str: Encoder to use 
                             (`aom`,`rav1e`,`svt_av1`,`svt_vp9`,`vpx`,`x265`, `x264`,`vvc`)
-                            Default: aom
-                            Example: -enc rav1e
+                            (default: "aom")
 
-    -v   --video_params     Encoder settings flags (If not set, will be used default parameters.)
-                            Must be inside ' ' or " "
+    video_params            list[str]: Strongly recommended to use shlex.split to generate
+                            from a string.
+                            (If not set, default encoder parameters will be used.)
+                            (Example: 'video_params': shlex.split("--rt -t 12 --kf-max-dist=240")
 
-    -p   --passes           Set number of passes for encoding
+    passes                  int: Number of passes for encoding. most encoders only support 1/2
                             (Default: AOMENC: 2, rav1e: 1, SVT-AV1: 1, SVT-VP9: 1, 
                             VPX: 2, x265: 1, x264: 1, VVC:1)
 
-    -w   --workers          Override number of workers.
+    workers                 int: Number of encoding workers. More means more instances of
+                            encoder running at once. (default: half the system threads)
                                 
-    --resume                If encode was stopped/quit resumes encode with saving all progress
-                            Resuming automatically skips scenedetection, audio encoding/copy,
-                            spliting, so resuming only possible after actuall encoding is started.
-                            /.temp folder must be presented for resume.
+    resume                  bool: If encode was stopped/quit resumes, redoing all partial chunks.
+                            but skipping any chunks which have already been completed.
+                            Does nothing if temp folder cannot be found. If found it automatically
+                            skips scenedetection, audio encoding/copy, spliting, so it only works
+                            after actual encoding has started. (default: False)
 
-    --no_check              Skip checking numbers of frames for source and encoded chunks.
-                            Needed if framerate changes to avoid console spam.
-                            By default any differences in frames of encoded files will be reported.
+    no_check                bool: Skip checking numbers of frames for source and encoded chunks.
+                            Needed if framerate changes are added in ffmpeg options. Not recommended
+                            By default any differences in frames of encoded files will be reported
+                            and will likely result in corrupted video. (default: False)
 
-    --keep                  Not deleting temprally folders after encode finished.
+    keep                    bool: If true, do not delete temporary folder after completion.
+                            (default: False)
 
-    -log --logging          Path to .log file(By default created in temp folder)
+    temp                    Path: path for temporally folders. (default: .temp)
 
-    --temp                  Set path for temporally folders. Default: .temp
-    
-    -cfg                    Save/Read config file with encoder, encoder parameters,
-                            FFmpeg and audio settings.
-
-    --mkvmerge              Use mkvmerge for concatenating instead of ffmpeg.
-                            Use in case when concatenation fails.
+    mkvmerge                bool: Use mkvmerge for concatenating instead of ffmpeg.
+                            Recommended if concatenation fails. (default: False)
 
 <h3 align="center">FFmpeg options</h3>
 
-    -a   --audio_params     FFmpeg audio settings (Default: copy audio from source to output)
-                            Example: -a '-c:a libopus -b:a  64k'
+    audio_params            list[str]: FFmpeg audio args (Default: ['-c:a', 'copy'])
+                            (Example: 'audio_params': shlex.split("-c:a libopus -b:a  64k")
 
-    -ff  --ffmpeg           FFmpeg options video options. Applied to each encoding segment individually.
-                          (Warning: Cropping doesn't work with Target VMAF mode)
-                            Example:
-                            --ff " -vf scale=320:240 "
+    ffmpeg                  list[str]: FFmpeg video params. Run on each chunk before encoding.
+                            (Warning: Cropping doesn't work with Target VMAF mode)
+                            (default: None)
+                            (Example: 'ffmpeg': shlex.split("-vf scale=320:240")
 
-    -fmt --pix_format       Setting custom pixel/bit format for piping
-                            (Default: 'yuv420p')
-                            Example for 10 bit source: 'yuv420p10le'
-                            Based on encoder, options should be adjusted accordingly.
+    pix_format              str: pixel/bit format for piping. This should match your
+                            input video (default: 'yuv420p')
+                            (Example for 10 bit source: 'pix_format': 'yuv420p10le')
+                            Ensure your encoder supports this format and knows about it.
 
 <h3 align="center">Segmenting</h3>
 
-    --split_method          Method used for generating splits.(Default: PySceneDetect)
-                            Options: `pyscene`, `aom_keyframes`
+    split_method            str: Method used for generating splits.
+                            (`pyscene`, `aom_keyframes`, `file`, `none`) (default: 'pyscene')
                             `pyscene` - PyScenedetect, content based scenedetection
                             with threshold.
                             `aom_keyframes` - using stat file of 1 pass of aomenc encode
                             to get exact place where encoder will place new keyframes.
+                            `file` - read from file specified by 'scenes'
+                            (NOT recommended unless using aom encoder)
                             (Keep in mind that speed also depends on set aomenc parameters)
 
-    -cm  --chunk_method     Determine way in which chunks made for encoding.
-                            ['hybrid'(default), 'select', 'vs_ffms2'(Recomended), 'vs_lsmash']
+    chunk_method            str: How chunks are made for encoding.
+                            ('hybrid', 'select', 'vs_ffms2', 'vs_lsmash')
+                            (default: 'hybrid') vs_ffms2 is probably best but also beta
 
-    -tr  --threshold        PySceneDetect threshold for scene detection Default: 35
+    threshold               float: PySceneDetect threshold for scene detection. Larger
+                            values make it less sensitive, splitting less (default: 35.)
 
-    -s   --scenes           Path to file with scenes timestamps.
-                            If given `0` spliting will be ignored
-                            If file not exist, new will be generated in current folder
-                            First run to generate stamps, all next reuse it.
-                            Example: "-s scenes.csv"
+    scenes                  Path: Path to file with scenes timestamps. If existing file
+                            specified and split_method is file, acts as alternative split
+                            method. 
+                            Otherwise csv file will be generated with splits data.
+                            (default: None)
 
-    -xs  --extra_split      Adding extra splits if frame distance beetween splits bigger than
-                            given value. Works with/without PySceneDetect
-                            Example: 1000 frames video with single scene,
-                            -xs 200 will add splits at 200,400,600,800.
+    extra_split             int: Adding extra splits if frame distance beetween splits bigger than
+                            given value. (default: None)
+                            Example: imagine a 1000 frame scene, 'extra_split': 200
+                            will add splits at 200,400,600,800.
 
 
 <h3 align="center">Target VMAF</h3>
- 
- 
-    --vmaf_target           Vmaf value to target. Supported for all encoders(Exception:VVC).
-                            Best works in range 85-97.
-                            When using this mode specify full encoding options.
-                            Encoding options must include quantizer based mode,
-                            and some quantizer option provided. (This value got replaced)
-                            `--crf`,`--cq-level`,`--quantizer` etc
+
+    vmaf_target             float: Vmaf value to target. Supports all except vvc.
+                            Setting this will enable target vmaf mode.
+                            Requires crf or q mode or whatever equivalent the
+                            encoder has and an explicit "default" crf value.
                             
-    --min_q, --max_q        Min,Max Q values limits for Target VMAF
+                            
+    min_q, max_q            Min,Max Q values limits for Target VMAF
                             If not set by user, encoder default will be used.
                             
-    --vmaf                  Calculate vmaf after encode is done.
-                            showing vmaf values for all frames,
-                            mean, 1,25,75 percentile.
-                            
-    --vmaf_plots            Make plots for target_vmaf search decisions
-                            (Exception: early skips)
-                            Saved in temp folder
+    vmaf                    bool: Calculate vmaf after encode is done. showing vmaf values for all frames,
+                            mean, 1,25,75 percentile. Invokes "plotvmaffile" callback with results.
 
-    --vmaf_path             Custom path to libvmaf models.
-                            example: --vmaf_path "vmaf_v0.6.1.pkl"
-                            Recomended to place both files in encoding folder
-                            (`vmaf_v0.6.1.pkl` and `vmaf_v0.6.1.pkl.model`)
-                            (Required if vmaf calculation doesn't work by default)
+    vmaf_path               str: Custom path to libvmaf models. Does NOT need to be set if ffmpeg
+                            default path works. Path should point to .pkl file in same folder as
+                            .model file. (default: None)
 
-    --vmaf_res              Resolution scaling for vmaf calculation, 
-                            vmaf_v0.6.1.pkl is 1920x1080 (by default),
-                            vmaf_4k_v0.6.1.pkl is 3840x2160 (don't forget about vmaf_path)
+    vmaf_res                str: Optional scaling for vmaf calculation. Should match model resolution
+                            vmaf_v0.6.1.pkl is 1920x1080 (by default), vmaf_4k_v0.6.1.pkl is 3840x2160
+                            (default: "1920x1080"). Will preserve original aspect ratio
 
-    --vmaf_steps            Number of probes for interpolation.
-                            1 and 2 probes have special cases to try to work with few data points.
+    vmaf_steps              int: Number of probes for interpolation in vmaf calculations.
+                            1 and 2 probes have special mechanisms to make them slightly less bad.
                             Optimal is 4-6 probes. Default: 4
     
-    --vmaf_filter           Filter used for vmaf calculation. Passed format is filter_complex.
-                            So if crop filter used ` -ff " -vf crop=200:1000:0:0 "`
-                            `--vmaf_filter` must be : ` --vmaf_filter "crop=200:1000:0:0"`
+    vmaf_filter             str: Filter used for vmaf calculation with ffmpeg. Uses filter_complex.
+                            (default: None). (example: 'vmaf_filter': "crop=200:1000:0:0")
     
-    --vmaf_rate             Setting rate for vmaf probes (Every N frame used in probe, Default: 4)
+    vmaf_rate               int: Framerate for vmaf testing. Set to 0 to use original video framerate
+                            or to any other number to save cpu cycles at the cost of some accuracy
+                            (default: 4)
     
-    --n_threads             Limit number of threads that used for vmaf calculation
-                            Example: --n_threads 12
-                            (Required if VMAF calculation gives error on high core counts)
+    n_threads               Limit number of threads that used for vmaf calculation
+                            (default: None) - Default has no thread limit for vmaf calculations
 
 
 
 <h2 align="center">Main Features</h2>
 
-**Spliting video by scenes for parallel encoding** because AV1 encoders are currently not good at multithreading, encoding is limited to single or couple of threads at the same time.
+**Spliting video by scenes for parallel encoding** because all encoders are currently not as good at multithreading as amd is at making threads, encoding is often limited to a few threads at the same time.
 
 *  [PySceneDetect](https://pyscenedetect.readthedocs.io/en/latest/) used for spliting video by scenes and running multiple encoders.
-*  Fastest way to encode AV1 without losing quality, as fast as many CPU cores you have :).
-*  Target VMAF mode. Targeting end result visual quality.
+*  Fastest way to transcode video into lossy formats.
+*  Target VMAF mode. Saves tons of bitrate while generating good looking video.
 *  Resuming encoding without loss of encoded progress.
-*  Simple and clean console look.
+*  Easy to use.
 *  Automatic detection of the number of workers the host can handle.
 *  Building encoding queue with bigger files first, minimizing waiting for the last scene to encode.
-*  Both video and audio transcoding with FFmpeg.
-*  Logging of progress of all encoders.
+*  Supports audio transcoding through FFmpeg.
 
 ## Install
 
@@ -180,29 +166,23 @@ With your own parameters:
   *  [Install Python3](https://www.python.org/downloads/) <br>
 When installing under Windows, select the option `add Python to PATH` in the installer
   *  [Install FFmpeg](https://ffmpeg.org/download.html)
-* Encoder of choice:
+* At least one of these encoders:
   *  [Install AOMENC](https://aomedia.googlesource.com/aom/)
   *  [Install rav1e](https://github.com/xiph/rav1e)
   *  [Install SVT-AV1](https://github.com/OpenVisualCloud/SVT-AV1)
   *  [Install SVT-VP9](https://github.com/OpenVisualCloud/SVT-VP9)
   *  [Install vpx](https://chromium.googlesource.com/webm/libvpx/) VP9, VP8 encoding
   *  [Install VTM](https://vcgit.hhi.fraunhofer.de/jvet/VVCSoftware_VTM) VVC encoding test model
- * Optional :
-   * [Vapoursynth](http://www.vapoursynth.com/)
-   * [ffms2](https://github.com/FFMS/ffms2) 
-   * [lsmash](https://github.com/VFR-maniac/L-SMASH-Works)
-   * [mkvmerge](https://mkvtoolnix.download/)
+* Optional:
+  * [Vapoursynth](http://www.vapoursynth.com/)
+  * [ffms2](https://github.com/FFMS/ffms2) 
+  * [lsmash](https://github.com/VFR-maniac/L-SMASH-Works)
+  * [mkvmerge](https://mkvtoolnix.download/)
 
 * With a package manager:
-  *  [PyPI](https://pypi.org/project/Av1an/)
-  *  [AUR](https://aur.archlinux.org/packages/python-av1an/)
+  *  [pip](https://pypi.org/project/parallelencode/)
 
 * Manually:
   *  Clone Repo or Download from Releases
+  *  `pip3 install -r requirements.txt`
   *  `python setup.py install`
-* Also:
-    On Ubuntu systems packages `python3-opencv` and `libsm6` are required
-
-### Support developer
-
-Bitcoin - 1gU9aQ2qqoQPuvop2jqC68JKZh5cyCivG

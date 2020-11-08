@@ -1,5 +1,0 @@
-numpy
-scenedetect[opencv]
-opencv-python
-psutil
-scipy
