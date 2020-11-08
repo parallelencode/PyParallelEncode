@@ -13,7 +13,7 @@ class Args(object):
         self.input: Path = None
         self.temp: Path = None
         self.output_file: Path = None
-        self.mkvmerge: bool = None
+        self.mkvmerge: bool = False
 
         # Splitting
         self.chunk_method: str = "hybrid"
@@ -26,12 +26,12 @@ class Args(object):
         self.threshold: float = 35.0
 
         # AOM Keyframe split
-        self.reuse_first_pass: bool = None
+        self.reuse_first_pass: bool = False
 
         # Encoding
         self.passes = None
         self.video_params: Command = None
-        self.encoder: str = None
+        self.encoder: str = "aom"
         self.workers: int = None
 
         # FFmpeg params
@@ -41,10 +41,10 @@ class Args(object):
         self.pix_format: str = "yuv420p"
 
         # Misc
-        self.resume: bool = None
-        self.no_check: bool = None
-        self.keep: bool = None
-        self.force: bool = None
+        self.resume: bool = False
+        self.no_check: bool = False
+        self.keep: bool = False
+        self.force: bool = False
 
         # Vmaf
         self.vmaf: bool = False
