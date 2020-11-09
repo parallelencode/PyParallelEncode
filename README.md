@@ -17,16 +17,16 @@ Encoders supported: AOM, RAV1E, SVT-AV1, VTM, x265, x264, SVT-VP9, VPX.
 Python example with default parameters:
 
     from pathlib import Path
-    from parallelencode.core import run
+    from parallelencode import run
     params = {"input": Path("input.mp4")}
     run(params)
 
 <h2 align="center">Parameters</h2>
 
-    input                   Path: Input file(s)
+    input                   Path: Input file (default: None) Required
 
     output_file             Path: output file to create (default: (input file name)_(encoder).mkv)
-                            Recommended to end with .mkv to avoid errors
+                            Recommended to end with .mkv to avoid errors.
 
     encoder                 str: Encoder to use 
                             (`aom`,`rav1e`,`svt_av1`,`svt_vp9`,`vpx`,`x265`, `x264`,`vvc`)
@@ -145,6 +145,20 @@ Python example with default parameters:
     n_threads               Limit number of threads that used for vmaf calculation
                             (default: None) - Default has no thread limit for vmaf calculations
 
+
+Register callbacks with ease using the built in callbacks tool:
+
+    def run_on_newframes(frames):
+        print("We just transcoded an extra " + frames + " frames")
+        # TODO: add code here
+
+    from parallelencode import Callbacks
+    from parallelencode import run
+    c = Callbacks()
+    c.subscribe("newframes", run_on_newframes)
+    params = {"input": Path("input.mp4")}
+    run(params, run_on_log)
+    
 
 
 <h2 align="center">Main Features</h2>
