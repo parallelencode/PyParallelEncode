@@ -10,7 +10,7 @@ class Args(object):
     def __init__(self, initial_data):
         # Input/Output/Temp
         self.input: Path = None
-        self.temp: Path = None
+        self.temp: Path = Path(".temp")
         self.output_file: Path = None
         self.mkvmerge: bool = False
 
@@ -31,11 +31,11 @@ class Args(object):
         self.passes = None
         self.video_params: Command = None
         self.encoder: str = "aom"
-        self.workers: int = None
+        self.workers: int = 0
 
         # FFmpeg params
         self.ffmpeg_pipe: Command = None
-        self.ffmpeg: str = None
+        self.ffmpeg: str = ""
         self.audio_params = ['-c:a', 'copy']
         self.pix_format: str = "yuv420p"
 

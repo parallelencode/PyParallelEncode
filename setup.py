@@ -14,14 +14,14 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="parallelencode",
-    version="1.0",
+    version="0.1.1",
     author="Parallel Encoders",
     author_email="eli.stonium@gmail.com",
     description="Cross platform framework for splitting and parallel encoding of video",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/parallelencode/PyParallelEncode",
-    packages=setuptools.find_namespace_packages('.', exclude='tests'),
+    packages=setuptools.find_packages('.'),
     install_requires=REQUIRES,
     classifiers=[
         "Programming Language :: Python :: 3",
