@@ -48,6 +48,8 @@ def probe_cmd(chunk: Chunk, q, ffmpeg_pipe, encoder, vmaf_rate) -> CommandPair:
 
     probe_name = gen_probes_names(chunk, q).with_suffix('.ivf').as_posix()
 
+    cmd = None
+
     if encoder == 'aom':
         params = ['aomenc', '--passes=1', '--threads=8',
                   '--end-usage=q', '--cpu-used=6', f'--cq-level={q}']
@@ -67,17 +69,6 @@ def probe_cmd(chunk: Chunk, q, ffmpeg_pipe, encoder, vmaf_rate) -> CommandPair:
                   '--threads=8', '--cpu-used=9', '--end-usage=q',
                   f'--cq-level={q}']
         cmd = CommandPair(pipe, [*params, '-o', probe_name, '-'])
-
-    elif encoder == 'svt_av1':
-        params = ['SvtAv1EncApp', '-i', 'stdin',
-                  '--preset', '8', '--rc', '0', '--qp', f'{q}']
-        cmd = CommandPair(pipe, [*params, '-b', probe_name, '-'])
-
-    elif encoder == 'svt_vp9':
-        params = ['SvtVp9EncApp', '-i', 'stdin',
-                  '-enc-mode', '8', '-q', f'{q}']
-        # TODO: pipe needs to output rawvideo
-        cmd = CommandPair(pipe, [*params, '-b', probe_name, '-'])
 
     elif encoder == 'x264':
         params = ['x264', '--log-level', 'error', '--demuxer', 'y4m',

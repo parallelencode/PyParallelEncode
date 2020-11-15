@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
-import time
-import json
-from pathlib import Path
-from typing import List
-import sys
 import concurrent
 import concurrent.futures
+import json
 import shutil
+import sys
+import time
+import traceback
+from pathlib import Path
+from typing import List
 
-from parallelencode.encoders import ENCODERS
+from parallelencode.VMAF.target_vmaf import target_vmaf_routine
+from parallelencode.VMAF.vmaf import plot_vmaf
 from parallelencode.args import Args
+from parallelencode.callbacks import Callbacks
 from parallelencode.chunks.chunk import Chunk
 from parallelencode.chunks.chunk_queue import load_or_gen_chunk_queue
-from parallelencode.core.concat import concat_routine
 from parallelencode.chunks.resume import write_progress_file
-from parallelencode.VMAF.target_vmaf import target_vmaf_routine
-from parallelencode.core.utils import frame_probe_fast, frame_probe, process_inputs
-from parallelencode.core.setup import determine_resources, outputs_filenames, setup
+from parallelencode.chunks.split import split_routine
+from parallelencode.core.concat import concat_routine
 from parallelencode.core.ffmpeg import extract_audio
-from parallelencode.core.fp_reuse import segment_first_pass
-from parallelencode.chunks.split import split_routine, extra_splits
-from parallelencode.VMAF.vmaf import plot_vmaf
-from parallelencode.callbacks import Callbacks
-from parallelencode.core.run_cmd import process_pipe, process_encoding_pipe
+from parallelencode.core.run_cmd import process_encoding_pipe
+from parallelencode.core.setup import determine_resources, outputs_filenames, setup
+from parallelencode.core.utils import frame_probe_fast, frame_probe
+from parallelencode.encoders import ENCODERS
 
 
 def encode_file(args: Args, cb: Callbacks):
@@ -45,10 +45,6 @@ def encode_file(args: Args, cb: Callbacks):
     # find split locations
     split_locations = split_routine(args, resuming, cb)
 
-    # Applying extra splits
-    if args.extra_split:
-        split_locations = extra_splits(args, split_locations, cb)
-
     # create a chunk queue
     chunk_queue = load_or_gen_chunk_queue(args, resuming, split_locations, cb)
 
@@ -57,11 +53,8 @@ def encode_file(args: Args, cb: Callbacks):
 
         extract_audio(args.input, args.temp, args.audio_params, cb)
 
-        if args.reuse_first_pass:
-            segment_first_pass(args.temp, split_locations)
-
     # do encoding loop
-    args.workers = determine_resources(args.encoder, args.workers)
+    args.workers = determine_resources(args.workers)
     startup(args, chunk_queue, cb)
     encoding_loop(args, cb, chunk_queue)
 
@@ -100,8 +93,8 @@ def startup(args: Args, chunk_queue: List[Chunk], cb: Callbacks):
             json.dump(d, done_file)
     clips = len(chunk_queue)
     args.workers = min(args.workers, clips)
-    print(f'\rQueue: {clips} Workers: {args.workers} Passes: {args.passes}\n'
-          f'Params: {" ".join(args.video_params)}')
+    cb.run_callback("log", f'\rQueue: {clips} Workers: {args.workers} Passes: {args.passes}\n'
+                           f'Params: {" ".join(args.video_params)}')
     cb.run_callback("newtask", "Encoding video", total)
     cb.run_callback("startencode", total, initial)
 
@@ -118,7 +111,6 @@ def encoding_loop(args: Args, cb: Callbacks, chunk_queue: List[Chunk]):
                     _, _, exc_tb = sys.exc_info()
                     print(f'Encoding error {exc}\nAt line {exc_tb.tb_lineno}')
                     cb.run_callback("terminate", 1)
-    cb.run_callback("endencode")
 
 
 def encode(chunk: Chunk, args: Args, cb: Callbacks):
@@ -143,27 +135,19 @@ def encode(chunk: Chunk, args: Args, cb: Callbacks):
 
         ENCODERS[args.encoder].on_before_chunk(args, chunk)
 
-        # skip first pass if reusing
-        start = 2 if args.reuse_first_pass and args.passes >= 2 else 1
-
         # Run all passes for this chunk
-        for current_pass in range(start, args.passes + 1):
+        for current_pass in range(1, args.passes + 1):
             try:
                 enc = ENCODERS[args.encoder]
                 pipe = enc.make_pipes(args, chunk, args.passes, current_pass, chunk.output)
 
-                if args.encoder in ('aom', 'vpx', 'rav1e', 'x265', 'x264', 'vvc', 'svt_av1'):
+                if args.encoder in ('aom', 'vpx', 'rav1e', 'x265', 'x264'):
                     process_encoding_pipe(pipe, args.encoder, cb)
-
-                if args.encoder in ('svt_vp9'):
-                    # SVT-AV1 developer: SVT-AV1 is special in the way it outputs to console
-                    # SVT-AV1 got a new output mode, but SVT-VP9 is still special
-                    process_pipe(pipe)
-                    cb.run_callback("svtvp9update", chunk_frames, args.passes)
 
             except Exception as e:
                 _, _, exc_tb = sys.exc_info()
-                print(f'Error at encode {e}\nAt line {exc_tb.tb_lineno}')
+                traceback.print_exc()
+                print(f'Error at encode {e}. At line {exc_tb.tb_lineno}')
 
         ENCODERS[args.encoder].on_after_chunk(args, chunk)
 

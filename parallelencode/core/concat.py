@@ -19,9 +19,7 @@ def concat_routine(args: Args, cb: Callbacks):
     :return: None
     """
     try:
-        if args.encoder == 'vvc':
-            vvc_concat(args.temp, args.output_file.with_suffix('.h266'))
-        elif args.mkvmerge:
+        if args.mkvmerge:
             concatenate_mkvmerge(args.temp, args.output_file, cb)
         else:
             concatenate_ffmpeg(args.temp, args.output_file, args.encoder, cb)
@@ -30,22 +28,6 @@ def concat_routine(args: Args, cb: Callbacks):
         print(f'Concatenation failed, error\nAt line: {exc_tb.tb_lineno}\nError:{str(e)}')
         cb.run_callback("log", f'Concatenation failed, aborting, error: {e}\n')
         cb.run_callback("terminate", 1)
-
-
-def vvc_concat(temp: Path, output: Path):
-    """
-    Concatenates vvc files
-
-    :param temp: the temp directory
-    :param output: the output video
-    :return: None
-    """
-    encode_files = sorted((temp / 'encode').iterdir())
-    bitstreams = [x.as_posix() for x in encode_files]
-    bitstreams = ' '.join(bitstreams)
-    cmd = f'vvc_concat  {bitstreams} {output.as_posix()}'
-
-    output = subprocess.run(cmd, shell=True)
 
 
 def concatenate_ffmpeg(temp: Path, output: Path, encoder: str, cb: Callbacks):
@@ -176,6 +158,6 @@ def _concatenate_mkvmerge(files, output, file_limit, cmd_limit, cb: Callbacks, f
 
     if len(remaining) > 0:
         return _concatenate_mkvmerge(
-            [tmp_out] + remaining, output, file_limit, cmd_limit, not flip)
+            [tmp_out] + remaining, output, file_limit, cmd_limit, cb, not flip)
     else:
         return tmp_out

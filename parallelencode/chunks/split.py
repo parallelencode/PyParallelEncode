@@ -5,12 +5,9 @@ import subprocess
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import List
-from numpy import linspace
 
 from parallelencode.args import Args
-from parallelencode.scenedetection.aom_kf import aom_keyframes, AOM_KEYFRAMES_DEFAULT_PARAMS
-from parallelencode.scenedetection.pyscene import pyscene
-from parallelencode.core.utils import frame_probe
+from parallelencode.scenedetection import ffmpeg, time, pyscene
 from parallelencode.callbacks import Callbacks
 
 
@@ -101,27 +98,6 @@ def segment(video: Path, temp: Path, frames: List[int], cb: Callbacks):
 
     cb.run_callback("log", 'Split Done\n')
 
-def extra_splits(args: Args, split_locations: list, cb: Callbacks):
-    cb.run_callback("log", 'Applying extra splits\n')
-
-    split_locs_with_start = split_locations[:]
-    split_locs_with_start.insert(0, 0)
-
-    split_locs_with_end = split_locations[:]
-    split_locs_with_end.append(frame_probe(args.input))
-
-    splits = list(zip(split_locs_with_start, split_locs_with_end))
-    for i in splits:
-        distance = (i[1] - i[0])
-        if distance > args.extra_split:
-            to_add = distance // args.extra_split
-            new_scenes = list(linspace(i[0],i[1], to_add + 1, dtype=int, endpoint=False)[1:])
-            split_locations.extend(new_scenes)
-
-    result = [int(x) for x in sorted(split_locations)]
-    cb.run_callback("log", f'Split distance: {args.extra_split}\nNew splits:{len(result)}\n')
-    return result
-
 
 def calc_split_locations(args: Args, cb: Callbacks) -> List[int]:
     """
@@ -132,7 +108,6 @@ def calc_split_locations(args: Args, cb: Callbacks) -> List[int]:
     :return: A list of frame numbers
     """
     # inherit video params from aom encode unless we are using a different encoder, then use defaults
-    aom_keyframes_params = args.video_params if (args.encoder == 'aom') else AOM_KEYFRAMES_DEFAULT_PARAMS
 
     if args.split_method == 'none':
         cb.run_callback("log", 'Skipping scene detection\n')
@@ -149,18 +124,19 @@ def calc_split_locations(args: Args, cb: Callbacks) -> List[int]:
 
     # Splitting using PySceneDetect
     elif args.split_method == 'pyscene':
-        cb.run_callback("log", f'Starting scene detection Threshold: {args.threshold}, Min_scene_length: {args.min_scene_len}\n')
+        cb.run_callback("log", f'Starting scene detection Threshold: {args.threshold}\n')
         try:
-            sc = pyscene(args.input, args.threshold, args.min_scene_len, args.is_vs, args.temp, cb)
+            sc = pyscene(args.input, args.threshold, args.is_vs, args.temp, cb)
         except Exception as e:
             cb.run_callback("log", f'Error in PySceneDetect: {e}\n')
             print(f'Error in PySceneDetect{e}\n')
 
     # Splitting based on aom keyframe placement
-    elif args.split_method == 'aom_keyframes':
+    elif args.split_method == 'ffmpeg':
         stat_file = args.temp / 'keyframes.log'
-        sc = aom_keyframes(args.input, stat_file, args.min_scene_len, args.ffmpeg_pipe, aom_keyframes_params,
-                           args.is_vs, cb)
+        sc = ffmpeg(args.input, args.threshold, args.is_vs, args.temp, cb)
+    elif args.split_method == "time":
+        sc = time(args.input, args.time_split_interval, cb)
     else:
         print(f'No valid split option: {args.split_method}\nValid options: "pyscene", "aom_keyframes"')
         cb.run_callback("terminate", 1)

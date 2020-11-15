@@ -1,5 +1,6 @@
 numpy
 scenedetect[opencv]
+vapoursynth
 opencv-python
 psutil
 scipy

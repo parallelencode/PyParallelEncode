@@ -15,17 +15,17 @@ class Args(object):
         self.mkvmerge: bool = False
 
         # Splitting
-        self.chunk_method: str = "hybrid"
+        self.chunk_method: str = "vs_lsmash"
+        self.split_method: str = "ffmpeg"
+
+        # Time splitting
+        self.time_split_interval: int = 240
+
+        # PySceneDetect/FFMPEG split
+        self.threshold: float = 0.3
+
+        # File Splitting
         self.scenes: Path = None
-        self.split_method: str = "pyscene"
-        self.extra_split: int = None
-        self.min_scene_len: int = None
-
-        # PySceneDetect split
-        self.threshold: float = 35.0
-
-        # AOM Keyframe split
-        self.reuse_first_pass: bool = False
 
         # Encoding
         self.passes = None
@@ -43,7 +43,6 @@ class Args(object):
         self.resume: bool = False
         self.no_check: bool = False
         self.keep: bool = False
-        self.force: bool = False
 
         # Vmaf
         self.vmaf: bool = False
@@ -59,14 +58,6 @@ class Args(object):
         self.n_threads: int = None
         self.vmaf_filter: str = None
 
-        # VVC
-        self.vvc_conf: Path = None
-        self.video_dimensions = (None, None)
-        self.video_framerate = None
-
-        # Inner
-        self.counter = None
-
         # Vapoursynth
         self.is_vs: bool = None
 
@@ -75,3 +66,12 @@ class Args(object):
 
         self.ffmpeg_pipe = [*self.ffmpeg, '-strict', '-1', '-pix_fmt', self.pix_format,
                             '-bufsize', '50000K', '-f', 'yuv4mpegpipe', '-']
+
+        if isinstance(self.input, str):
+            self.input = Path(self.input)
+
+        if isinstance(self.temp, str):
+            self.temp = Path(self.temp)
+
+        if isinstance(self.output_file, str):
+            self.output_file = Path(self.output_file)

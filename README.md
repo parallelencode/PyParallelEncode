@@ -10,9 +10,20 @@
 </h4>
 <h2 align="center">Easy, powerful, all-in-one encoding based on Av1an</h2>
 
-Output to AV1 / VVC / HEVC / H264 / VP9 / VP8. Input from all formats supported by ffmpeg.
+<h3 align="center">Supported Formats</h3>
+Input Containers: mkv, webm, mp4
 
-Encoders supported: AOM, RAV1E, SVT-AV1, VTM, x265, x264, SVT-VP9, VPX.
+Input Video Codecs: h264, hevc, vp8, vp9, av1, mpeg-4, ffv1
+
+Input Audio Codecs: opus, mp3, flac, LPCM (wav)
+
+Other input containers, codecs, will probably work, depening on what your ffmpeg supports,
+but any combination of the above are officially supported.
+If you have any errors open a github issue.
+
+Output video codecs: AV1 / HEVC / H264 / VP9 / VP8.
+
+Encoders supported: AOM, RAV1E, x265, x264, VPX.
 
 Python example with default parameters:
 
@@ -23,23 +34,24 @@ Python example with default parameters:
 
 <h2 align="center">Parameters</h2>
 
-    input                   Path: Input file (default: None) Required
+    input                   Path: Input file (default: None) Required. Either a video or vapoursynth file.
+                            Note that while vapoursynth files are supported, using them will generate massive
+                            temporary y4m files with some splitting algos, like ffmpeg and pyscenedetect.
 
     output_file             Path: output file to create (default: (input file name)_(encoder).mkv)
                             Recommended to end with .mkv to avoid errors.
 
     encoder                 str: Encoder to use 
-                            (`aom`,`rav1e`,`svt_av1`,`svt_vp9`,`vpx`,`x265`, `x264`,`vvc`)
+                            (`aom`,`rav1e`,`vpx`,`x265`, `x264`)
                             (default: "aom")
 
-    video_params            list[str]: Strongly recommended to use shlex.split to generate
+    video_params            list[str]: It's strongly recommended to use shlex.split to generate
                             from a string.
                             (If not set, default encoder parameters will be used.)
                             (Example: 'video_params': shlex.split("--rt -t 12 --kf-max-dist=240")
 
     passes                  int: Number of passes for encoding. most encoders only support 1/2
-                            (Default: AOMENC: 2, rav1e: 1, SVT-AV1: 1, SVT-VP9: 1, 
-                            VPX: 2, x265: 1, x264: 1, VVC:1)
+                            (default: aomenc: 2, rav1e: 1, vpx: 2, x265: 1, x264: 1)
 
     workers                 int: Number of encoding workers. More means more instances of
                             encoder running at once. (default: half the system threads)
@@ -81,32 +93,43 @@ Python example with default parameters:
 <h3 align="center">Segmenting</h3>
 
     split_method            str: Method used for generating splits.
-                            (`pyscene`, `aom_keyframes`, `file`, `none`) (default: 'pyscene')
-                            `pyscene` - PyScenedetect, content based scenedetection
-                            with threshold.
-                            `aom_keyframes` - using stat file of 1 pass of aomenc encode
-                            to get exact place where encoder will place new keyframes.
+                            (`ffmpeg`, `pyscene`, `time`, `file`, `none`) (default: 'ffmpeg')
+                            `ffmpeg` - Content based scenedetection via built in computer vision
+                            and iframe detection. (the best option in most cases for optimal splits)
+                            `pyscene` - Content based scenedetection via opencv/pyscenedetect
+                            (may drop frames with any NON intra-frame based format)
+                            `time` - create regular interval splits from the 
                             `file` - read from file specified by 'scenes'
-                            (NOT recommended unless using aom encoder)
-                            (Keep in mind that speed also depends on set aomenc parameters)
+                            `none` - do not split the video. The only benefit of this is to use
+                            pyparallelencode exclusively for target vmaf/per title encoding.
 
     chunk_method            str: How chunks are made for encoding.
-                            ('hybrid', 'select', 'vs_ffms2', 'vs_lsmash')
-                            (default: 'hybrid') vs_ffms2 is probably best but also beta
+                            (`vs_lsmash`, `segment`)
+                            (default: `vs_lsmash`)
+                            `vs_lsmash` - Consumes more ram (up to 0.1-1GB extra per worker) and more
+                            cpu but is actually reliable when splitting non-intraframe video without
+                            using the ffmpeg split method.
+                            GREATLY reduces disk space needed as videos are not actually chunked.
+                            Requires vapoursynth.
+                            `segment` - The traditional method of splitting video. This splits
+                            the video into numerous segments which take up disk space and are read
+                            in and piped into.
 
-    threshold               float: PySceneDetect threshold for scene detection. Larger
-                            values make it less sensitive, splitting less (default: 35.)
+    threshold               float: Scene detection threshold. Larger values make the scene detection algo
+                            less sensitive while smaller provide more sensitivity. Ranges from 0-1 with ffmpeg
+                            with values from 0.1-0.4 recommended. Ranges from 1-100 with pyscenedetect with
+                            values of around 35 recommended. (default: 0.3)
 
     scenes                  Path: Path to file with scenes timestamps. If existing file
                             specified and split_method is file, acts as alternative split
-                            method. 
+                            method. Needed for file splitting.
                             Otherwise csv file will be generated with splits data.
                             (default: None)
 
-    extra_split             int: Adding extra splits if frame distance beetween splits bigger than
-                            given value. (default: None)
-                            Example: imagine a 1000 frame scene, 'extra_split': 200
-                            will add splits at 200,400,600,800.
+    time_split_interval     int: If using regular interval splitting, split every
+                            n frames. (default: 240)
+                            Example: imagine a 950 frame video, 'time_split_interval': 200
+                            will split into 5 chunks of 0-199,200-399,400-599,600-799,800-949.
 
 
 <h3 align="center">Target VMAF</h3>
@@ -183,10 +206,7 @@ When installing under Windows, select the option `add Python to PATH` in the ins
 * At least one of these encoders:
   *  [Install AOMENC](https://aomedia.googlesource.com/aom/)
   *  [Install rav1e](https://github.com/xiph/rav1e)
-  *  [Install SVT-AV1](https://github.com/OpenVisualCloud/SVT-AV1)
-  *  [Install SVT-VP9](https://github.com/OpenVisualCloud/SVT-VP9)
   *  [Install vpx](https://chromium.googlesource.com/webm/libvpx/) VP9, VP8 encoding
-  *  [Install VTM](https://vcgit.hhi.fraunhofer.de/jvet/VVCSoftware_VTM) VVC encoding test model
 * Optional:
   * [Vapoursynth](http://www.vapoursynth.com/)
   * [ffms2](https://github.com/FFMS/ffms2) 

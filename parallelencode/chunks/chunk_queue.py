@@ -1,17 +1,14 @@
 import json
 from pathlib import Path
-import os
 from typing import List
 
+from parallelencode.args import Args
+from parallelencode.callbacks import Callbacks
 from parallelencode.chunks.chunk import Chunk
 from parallelencode.chunks.resume import read_done_data
 from parallelencode.chunks.split import segment
-
-from parallelencode.args import Args
+from parallelencode.core.utils import frame_probe
 from parallelencode.encoders import ENCODERS
-from parallelencode.core.ffmpeg import get_keyframes
-from parallelencode.core.utils import frame_probe, frame_probe_fast
-from parallelencode.callbacks import Callbacks
 
 
 # Todo: make -xs work with all
@@ -48,6 +45,7 @@ def load_or_gen_chunk_queue(args: Args, resuming: bool, split_locations: List[in
     :param args: the Args
     :param resuming: if we are resuming
     :param split_locations: a list of frames to split on
+    :param cb: Callbacks reference
     :return: A chunk queue (list of chunks)
     """
     # if resuming, read chunks from file and remove those already done
@@ -70,74 +68,18 @@ def create_encoding_queue(args: Args, split_locations: List[int], cb) -> List[Ch
 
     :param args: Args
     :param split_locations: a list of frames to split on
+    :param cb: Callbacks reference
     :return: A list of chunks
     """
     chunk_method_gen = {
         'segment': create_video_queue_segment,
-        'select': create_video_queue_select,
-        'vs_ffms2': create_video_queue_vsffms2,
         'vs_lsmash': create_video_queue_vslsmash,
-        'hybrid': create_video_queue_hybrid
     }
     chunk_queue = chunk_method_gen[args.chunk_method](args, split_locations, cb)
 
     # Sort largest first so chunks that take a long time to encode start first
     chunk_queue.sort(key=lambda c: c.size, reverse=True)
     return chunk_queue
-
-
-def reduce_segments(scenes: List[int]) -> List[int]:
-    """Windows terminal can't handle more than ~400 segments in length."""
-    count = len(scenes)
-    interval = int(count / 400 + (count % 400 > 0))
-    scenes = scenes[::interval]
-    return scenes
-
-
-def create_video_queue_hybrid(args: Args, split_locations: List[int], cb: Callbacks) -> List[Chunk]:
-    """
-    Create list of chunks using hybrid segment-select approach
-
-    :param args: the Args
-    :param split_locations: a list of frames to split on
-    :param cb: Callbacks
-    :return: A list of chunks
-    """
-    keyframes = get_keyframes(args.input)
-
-    end = [frame_probe_fast(args.input, args.is_vs)]
-
-    splits = [0] + split_locations + end
-
-    segments_list = list(zip(splits, splits[1:]))
-    to_split = [x for x in keyframes if x in splits]
-
-    if os.name == 'nt':
-        to_split = reduce_segments(to_split)
-
-    segments = []
-
-    # Make segments
-    segment(args.input, args.temp, to_split[1:], cb)
-    source_path = args.temp / 'split'
-    queue_files = [x for x in source_path.iterdir() if x.suffix == '.mkv']
-    queue_files.sort(key=lambda p: p.stem)
-
-    kf_list = list(zip(to_split, to_split[1:] + end))
-    for f, (x, y) in zip(queue_files, kf_list):
-        to_add = [(f, [s[0] - x, s[1] - x]) for s in segments_list
-                 if s[0] >= x and s[1] <= y
-                 and s[0] - x < s[1] - x]
-        segments.extend(to_add)
-
-    chunk_queue = [create_select_chunk(args, index, file, *cb) for index, (file, cb) in enumerate(segments)]
-    return chunk_queue
-
-
-def create_video_queue_vsffms2(args: Args, split_locations: List[int], cb: Callbacks) -> List[Chunk]:
-    script = "from vapoursynth import core\n" \
-             "core.ffms2.Source(\"{}\", cachefile=\"{}\").set_output()"
-    return create_video_queue_vs(args, split_locations, script)
 
 
 def create_video_queue_vslsmash(args: Args, split_locations: List[int], cb: Callbacks) -> List[Chunk]:
@@ -153,7 +95,6 @@ def create_video_queue_vs(args: Args, split_locations: List[int], script: str) -
     :param args: the Args
     :param split_locations: a list of frames to split on
     :param script: source filter script to use with vspipe (ignored with vs input)
-    :param cb: Callbacks
     :return: A list of chunks
     """
     # add first frame and last frame
@@ -200,54 +141,6 @@ def create_vs_chunk(args: Args, index: int, vs_script: Path, frame_start: int, f
     size = frames  # use the number of frames to prioritize which chunks encode first, since we don't have file size
 
     chunk = Chunk(args.temp, index, vspipe_gen_cmd, extension, size, frames)
-
-    return chunk
-
-
-def create_video_queue_select(args: Args, split_locations: List[int], cb: Callbacks) -> List[Chunk]:
-    """
-    Create a list of chunks using the select filter
-
-    :param args: the Args
-    :param split_locations: a list of frames to split on
-    :param cb: Callbacks
-    :return: A list of chunks
-    """
-    # add first frame and last frame
-    last_frame = frame_probe(args.input)
-    split_locs_fl = [0] + split_locations + [last_frame]
-
-    # pair up adjacent members of this list ex: [0, 10, 20, 30] -> [(0, 10), (10, 20), (20, 30)]
-    chunk_boundaries = zip(split_locs_fl, split_locs_fl[1:])
-
-    chunk_queue = [create_select_chunk(args, index, args.input, *cb) for index, cb in enumerate(chunk_boundaries)]
-
-    return chunk_queue
-
-
-def create_select_chunk(args: Args, index: int, src_path: Path, frame_start: int, frame_end: int) -> Chunk:
-    """
-    Creates a chunk using ffmpeg's select filter
-
-    :param args: the Args
-    :param src_path: the path of the entire unchunked source file
-    :param index: the index of the chunk
-    :param frame_start: frame that this chunk should start on (0-based, inclusive)
-    :param frame_end: frame that this chunk should end on (0-based, exclusive)
-    :return: a Chunk
-    """
-    assert frame_end > frame_start, "Can't make a chunk with <= 0 frames!"
-
-    frames = frame_end - frame_start
-    frame_end -= 1  # the frame end boundary is actually a frame that should be included in the next chunk
-
-    ffmpeg_gen_cmd = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'error', '-i', src_path.as_posix(), '-vf',
-                      f'select=between(n\\,{frame_start}\\,{frame_end}),setpts=PTS-STARTPTS', '-pix_fmt', args.pix_format,
-                      '-bufsize', '50000K', '-f', 'yuv4mpegpipe', '-']
-    extension = ENCODERS[args.encoder].output_extension
-    size = frames  # use the number of frames to prioritize which chunks encode first, since we don't have file size
-
-    chunk = Chunk(args.temp, index, ffmpeg_gen_cmd, extension, size, frames)
 
     return chunk
 

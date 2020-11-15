@@ -4,11 +4,10 @@ import os
 import shutil
 from pathlib import Path
 
-from psutil import virtual_memory
 from parallelencode.args import Args
 
 
-def determine_resources(encoder, workers):
+def determine_resources(workers):
     """Returns number of workers that machine can handle with selected encoder."""
 
     # If set by user, skip
@@ -16,16 +15,7 @@ def determine_resources(encoder, workers):
         return workers
 
     cpu = os.cpu_count()
-    ram = round(virtual_memory().total / 2 ** 30)
-
-    if encoder in ('aom', 'rav1e', 'vpx'):
-        workers = round(min(cpu / 2, ram / 1.5))
-
-    elif encoder in ('svt_av1', 'svt_vp9', 'x265', 'x264'):
-        workers = round(min(cpu, ram)) // 8
-
-    elif encoder in 'vvc':
-        workers = round(min(cpu, ram))
+    workers = cpu // 2
 
     # fix if workers round up to 0
     if workers == 0:

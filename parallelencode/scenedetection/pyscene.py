@@ -16,20 +16,17 @@ if sys.platform == "linux":
     from os import mkfifo
 
 
-def pyscene(video, threshold, min_scene_len, is_vs, temp, cb: Callbacks):
+def pyscene(video, threshold, is_vs, temp, cb: Callbacks):
     """
     Running PySceneDetect detection on source video for segmenting.
     Optimal threshold settings 15-50
     """
 
-    if not min_scene_len:
-        min_scene_len = 15
+    min_scene_len = 15
 
-    cb.run_callback("log", f'Starting PySceneDetect:\nThreshold: {threshold}, Min scene lenght: {min_scene_len}, Is Vapoursynth input: {is_vs}\n')
+    cb.run_callback("log", f'Starting PySceneDetect:\nThreshold: {threshold}, Is Vapoursynth input: {is_vs}\n')
 
     if is_vs:
-        # Handling vapoursynth, so we need to create a named pipe to feed to VideoManager.
-        # TODO: Do we clean this up after pyscenedetect has run, or leave it as part of the temp dir, where it will be cleaned up later?
         if sys.platform == "linux":
             vspipe_fifo = temp / 'vspipe.y4m'
             mkfifo(vspipe_fifo)
