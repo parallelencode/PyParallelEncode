@@ -3,10 +3,10 @@ import setuptools
 REQUIRES = [
     'numpy',
     'scenedetect[opencv]',
+    'vapoursynth',
     'opencv-python',
     'psutil',
-    'scipy',
-    'python-Levenshtein',
+    'scipy'
 ]
 
 with open("README.md", "r") as f:
@@ -25,7 +25,7 @@ setuptools.setup(
     install_requires=REQUIRES,
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
