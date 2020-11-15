@@ -2,19 +2,17 @@ import setuptools
 
 REQUIRES = [
     'numpy',
-    'scenedetect[opencv]',
-    'vapoursynth',
-    'opencv-python',
     'psutil',
     'scipy'
 ]
+
 
 with open("README.md", "r") as f:
     long_description = f.read()
 
 setuptools.setup(
     name="parallelencode",
-    version="0.1.3",
+    version="0.1.4",
     author="Parallel Encoders",
     author_email="eli.stonium@gmail.com",
     description="Cross platform framework for splitting and parallel encoding of video",
@@ -29,4 +27,8 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+    extras_require = {
+        'pyscenedetect scene detection':  ["scenedetect[opencv]", "opencv-python"],
+        'lsmash splitting': ["vapoursynth"]
+    }
 )

@@ -3,10 +3,13 @@
 import sys
 from subprocess import Popen
 
-from scenedetect.detectors import ContentDetector
-from scenedetect.scene_manager import SceneManager
-from scenedetect.video_manager import VideoManager
-from scenedetect.frame_timecode import FrameTimecode
+try:
+    from scenedetect.detectors import ContentDetector
+    from scenedetect.scene_manager import SceneManager
+    from scenedetect.video_manager import VideoManager
+    from scenedetect.frame_timecode import FrameTimecode
+except ImportError as e:
+    print("Scenedetect not found. Encoding may fail if it tries to use it.")
 
 from parallelencode.core.utils import frame_probe
 from parallelencode.core.vapoursynth import compose_vapoursynth_pipe
