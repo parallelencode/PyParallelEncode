@@ -9,6 +9,7 @@ import traceback
 from pathlib import Path
 from typing import List
 
+import parallelencode.core.run_cmd
 from parallelencode.VMAF.target_vmaf import target_vmaf_routine
 from parallelencode.VMAF.vmaf import plot_vmaf
 from parallelencode.args import Args
@@ -19,7 +20,7 @@ from parallelencode.chunks.resume import write_progress_file
 from parallelencode.chunks.split import split_routine
 from parallelencode.core.concat import concat_routine
 from parallelencode.core.ffmpeg import extract_audio
-from parallelencode.core.run_cmd import process_encoding_pipe
+from parallelencode.core.run_cmd import process_encoding_pipe, process_enc_debug_pipes
 from parallelencode.core.setup import determine_resources, outputs_filenames, setup
 from parallelencode.core.utils import frame_probe_fast, frame_probe
 from parallelencode.encoders import ENCODERS
@@ -139,10 +140,12 @@ def encode(chunk: Chunk, args: Args, cb: Callbacks):
         for current_pass in range(1, args.passes + 1):
             try:
                 enc = ENCODERS[args.encoder]
-                pipe = enc.make_pipes(args, chunk, args.passes, current_pass, chunk.output)
+                pipe = enc.make_encode_pipes(args, chunk, args.passes, current_pass, chunk.output)
 
-                if args.encoder in ('aom', 'vpx', 'rav1e', 'x265', 'x264'):
-                    process_encoding_pipe(pipe, args.encoder, cb)
+                if not args.is_debug:
+                    process_encoding_pipe(pipe, enc, cb)
+                else:
+                    process_enc_debug_pipes(pipe, enc, cb)
 
             except Exception as e:
                 _, _, exc_tb = sys.exc_info()

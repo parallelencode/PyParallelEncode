@@ -2,16 +2,13 @@
 
 from math import log as ln
 
-import subprocess
-from subprocess import STDOUT, PIPE
-
 import numpy as np
 from scipy import interpolate
 
 from parallelencode.args import Args
-from parallelencode.core.run_cmd import process_pipe
+from parallelencode.core.run_cmd import process_pipe, process_debug_pipes, make_pipes, debug_make_pipes
 from parallelencode.chunks.chunk import Chunk
-from parallelencode.core.commandtypes import CommandPair, Command
+from parallelencode.core.commandtypes import CommandPair
 from parallelencode.callbacks import Callbacks
 from parallelencode.VMAF.vmaf import call_vmaf, read_weighted_vmaf
 
@@ -51,7 +48,7 @@ def probe_cmd(chunk: Chunk, q, ffmpeg_pipe, encoder, vmaf_rate) -> CommandPair:
     cmd = None
 
     if encoder == 'aom':
-        params = ['aomenc', '--passes=1', '--threads=8',
+        params = ['aomenc', '--passes=1', '--threads=8', '--tile-columns=1',
                   '--end-usage=q', '--cpu-used=6', f'--cq-level={q}']
         cmd = CommandPair(pipe, [*params, '-o', probe_name, '-'])
 
@@ -77,17 +74,6 @@ def probe_cmd(chunk: Chunk, q, ffmpeg_pipe, encoder, vmaf_rate) -> CommandPair:
         cmd = CommandPair(pipe, [*params, '-o', probe_name, '-'])
 
     return cmd
-
-
-def make_pipes(ffmpeg_gen_cmd: Command, command: CommandPair):
-
-    ffmpeg_gen_pipe = subprocess.Popen(ffmpeg_gen_cmd, stdout=PIPE, stderr=STDOUT)
-    ffmpeg_pipe = subprocess.Popen(command[0], stdin=ffmpeg_gen_pipe.stdout, stdout=PIPE, stderr=STDOUT)
-    pipe = subprocess.Popen(command[1], stdin=ffmpeg_pipe.stdout, stdout=PIPE,
-                            stderr=STDOUT,
-                            universal_newlines=True)
-
-    return pipe
 
 
 def get_target_q(scores, vmaf_target):
@@ -135,10 +121,14 @@ def vmaf_probe(chunk: Chunk, q, args: Args):
     """
 
     cmd = probe_cmd(chunk, q, args.ffmpeg_pipe, args.encoder, args.vmaf_rate)
-    pipe = make_pipes(chunk.ffmpeg_gen_cmd, cmd)
-    process_pipe(pipe)
+    if args.is_debug:
+        pipes = debug_make_pipes(chunk.ffmpeg_gen_cmd, cmd)
+        process_debug_pipes(pipes)
+    else:
+        pipe = make_pipes(chunk.ffmpeg_gen_cmd, cmd)
+        process_pipe(pipe)
 
-    file = call_vmaf(chunk, gen_probes_names(chunk, q), args.n_threads, args.vmaf_path, args.vmaf_res, vmaf_filter=args.vmaf_filter,
+    file = call_vmaf(chunk, gen_probes_names(chunk, q), args.n_threads, args.vmaf_path, args.vmaf_res, args, vmaf_filter=args.vmaf_filter,
                      vmaf_rate=args.vmaf_rate)
     score = read_weighted_vmaf(file)
 

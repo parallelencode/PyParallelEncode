@@ -8,6 +8,7 @@ from parallelencode.chunks.chunk import Chunk
 from parallelencode.args import Args
 from parallelencode.core.commandtypes import Command, MPCommands
 from parallelencode.callbacks import Callbacks
+from parallelencode.core.run_cmd import make_pipes, debug_make_pipes
 
 
 class Encoder(ABC):
@@ -83,7 +84,7 @@ class Encoder(ABC):
         :return: match object from re.search matching the number of encoded frames"""
         pass
 
-    def make_pipes(self, a: Args, c: Chunk, passes: int, current_pass: int, output: str, man_q: int = None):
+    def make_encode_pipes(self, a: Args, c: Chunk, passes: int, current_pass: int, output: str, man_q: int = None):
         """
         Creates a pipe for the given chunk with the given args
 
@@ -95,21 +96,18 @@ class Encoder(ABC):
         :param man_q: use a different quality
         :return: a Pipe attached to the encoders stdout
         """
-        filter_cmd, enc_cmd = self.compose_1_pass(a, c, output)[0] if passes == 1 else \
+        commands = self.compose_1_pass(a, c, output)[0] if passes == 1 else \
                               self.compose_2_pass(a, c, output)[current_pass - 1]
 
         if man_q:
-            enc_cmd = self.man_q(enc_cmd, man_q)
+            commands[1] = self.man_q(commands[1], man_q)
         elif c.vmaf_target_cq:
-            enc_cmd = self.man_q(enc_cmd, c.vmaf_target_cq)
+            commands[1] = self.man_q(commands[1], c.vmaf_target_cq)
 
-        ffmpeg_gen_pipe = subprocess.Popen(c.ffmpeg_gen_cmd, stdout=PIPE, stderr=DEVNULL)
-        ffmpeg_pipe = subprocess.Popen(filter_cmd, stdin=ffmpeg_gen_pipe.stdout, stdout=PIPE, stderr=STDOUT)
-        pipe = subprocess.Popen(enc_cmd, stdin=ffmpeg_pipe.stdout, stdout=PIPE,
-                                stderr=STDOUT,
-                                universal_newlines=True)
-
-        return pipe
+        if a.is_debug:
+            return debug_make_pipes(c.ffmpeg_gen_cmd, commands)
+        else:
+            return make_pipes(c.ffmpeg_gen_cmd, commands)
 
     def is_valid(self, args: Args) -> Tuple[bool, Optional[str]]:
         """
