@@ -12,7 +12,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="parallelencode",
-    version="0.1.9",
+    version="0.1.10",
     author="Parallel Encoders",
     author_email="eli.stonium@gmail.com",
     description="Cross platform framework for splitting and parallel encoding of video",

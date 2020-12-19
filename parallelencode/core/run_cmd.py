@@ -86,7 +86,7 @@ def process_enc_debug_pipes(pipes, encoder, cb: Callbacks):
         if len(line) == 0:
             continue
 
-        match = enc.match_line(line, cb)
+        match = encoder.match_line(line, cb)
 
         if match:
             new = int(match.group(1))
@@ -114,7 +114,7 @@ def process_encoding_pipe(pipe, encoder, cb: Callbacks):
         if len(line) == 0:
             continue
 
-        match = enc.match_line(line, cb)
+        match = encoder.match_line(line, cb)
 
         if match:
             new = int(match.group(1))
