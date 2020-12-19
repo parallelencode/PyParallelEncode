@@ -96,18 +96,18 @@ class Encoder(ABC):
         :param man_q: use a different quality
         :return: a Pipe attached to the encoders stdout
         """
-        commands = self.compose_1_pass(a, c, output)[0] if passes == 1 else \
+        cmd1, cmd2 = self.compose_1_pass(a, c, output)[0] if passes == 1 else \
                               self.compose_2_pass(a, c, output)[current_pass - 1]
 
         if man_q:
-            commands[1] = self.man_q(commands[1], man_q)
+            cmd2 = self.man_q(cmd2, man_q)
         elif c.vmaf_target_cq:
-            commands[1] = self.man_q(commands[1], c.vmaf_target_cq)
+            cmd2 = self.man_q(cmd2, c.vmaf_target_cq)
 
         if a.is_debug:
-            return debug_make_pipes(c.ffmpeg_gen_cmd, commands)
+            return debug_make_pipes(c.ffmpeg_gen_cmd, cmd1, cmd2)
         else:
-            return make_pipes(c.ffmpeg_gen_cmd, commands)
+            return make_pipes(c.ffmpeg_gen_cmd, cmd1, cmd2)
 
     def is_valid(self, args: Args) -> Tuple[bool, Optional[str]]:
         """

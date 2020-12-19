@@ -131,11 +131,11 @@ def process_encoding_pipe(pipe, encoder, cb: Callbacks):
         print('\n'.join(encoder_history))
 
 
-def make_pipes(ffmpeg_gen_cmd: Command, command: CommandPair):
+def make_pipes(ffmpeg_gen_cmd: Command, ffmpeg_cmd, encode_cmd):
 
     ffmpeg_gen_pipe = subprocess.Popen(ffmpeg_gen_cmd, stdout=PIPE, stderr=subprocess.DEVNULL)
-    ffmpeg_pipe = subprocess.Popen(command[0], stdin=ffmpeg_gen_pipe.stdout, stdout=PIPE, stderr=subprocess.DEVNULL)
-    pipe = subprocess.Popen(command[1], stdin=ffmpeg_pipe.stdout, stdout=PIPE,
+    ffmpeg_pipe = subprocess.Popen(ffmpeg_cmd, stdin=ffmpeg_gen_pipe.stdout, stdout=PIPE, stderr=subprocess.DEVNULL)
+    pipe = subprocess.Popen(encode_cmd, stdin=ffmpeg_pipe.stdout, stdout=PIPE,
                             stderr=subprocess.STDOUT,
                             universal_newlines=True)
     return pipe
