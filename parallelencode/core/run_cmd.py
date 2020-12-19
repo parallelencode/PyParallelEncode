@@ -20,7 +20,12 @@ def process_debug_pipes(pipes):
         stderr2 = pipes[1].stderr.readline().strip()
         while len(stderr2) != 0:
             print("input: " + stderr2)
-            stderr2 = pipes[0].stderr.readline().strip()
+            stderr2 = pipes[1].stderr.readline().strip()
+
+        stderr3 = pipes[2].stderr.readline().strip()
+        while len(stderr3) != 0:
+            print("enc: " + stderr3)
+            stderr3 = pipes[2].stderr.readline().strip()
 
         if len(line) == 0 and pipes[2].poll() is not None:
             break
@@ -68,7 +73,12 @@ def process_enc_debug_pipes(pipes, encoder, cb: Callbacks):
         stderr2 = pipes[1].stderr.readline().strip()
         while len(stderr2) != 0:
             print("input: " + stderr2)
-            stderr2 = pipes[0].stderr.readline().strip()
+            stderr2 = pipes[1].stderr.readline().strip()
+
+        stderr3 = pipes[2].stderr.readline().strip()
+        while len(stderr3) != 0:
+            print("enc: " + stderr3)
+            stderr3 = pipes[2].stderr.readline().strip()
 
         if len(line) == 0 and pipes[2].poll() is not None:
             break
@@ -126,7 +136,7 @@ def make_pipes(ffmpeg_gen_cmd: Command, command: CommandPair):
     ffmpeg_gen_pipe = subprocess.Popen(ffmpeg_gen_cmd, stdout=PIPE, stderr=subprocess.DEVNULL)
     ffmpeg_pipe = subprocess.Popen(command[0], stdin=ffmpeg_gen_pipe.stdout, stdout=PIPE, stderr=subprocess.DEVNULL)
     pipe = subprocess.Popen(command[1], stdin=ffmpeg_pipe.stdout, stdout=PIPE,
-                            stderr=PIPE,
+                            stderr=subprocess.STDOUT,
                             universal_newlines=True)
     return pipe
 
