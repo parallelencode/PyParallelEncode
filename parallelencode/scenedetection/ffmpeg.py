@@ -3,7 +3,6 @@ import subprocess
 import sys
 from subprocess import Popen
 
-from parallelencode.core.utils import frame_probe
 from parallelencode.core.vapoursynth import compose_vapoursynth_pipe
 from parallelencode.callbacks import Callbacks
 
@@ -30,11 +29,6 @@ def ffmpeg(video, threshold, is_vs, temp, cb: Callbacks):
         vspipe_cmd = compose_vapoursynth_pipe(video, vspipe_fifo)
         vspipe_process = Popen(vspipe_cmd)
 
-        # Get number of frames from Vapoursynth script to pass as duration to VideoManager.
-        # We need to pass the number of frames to the manager, otherwise it won't close the
-        # receiving end of the pipe, and will simply sit waiting after vspipe has finished sending
-        # the last frame.
-    frames = frame_probe(video)
     finfo = "showinfo,select=gt(scene\\," + str(threshold) + "),select=eq(key\\,1),showinfo"
     ffmpeg_cmd = ["ffmpeg", "-i", str(vspipe_fifo if is_vs else video.as_posix()), "-hide_banner", "-loglevel", "32",
                   "-filter_complex", finfo, "-an", "-f", "null", "-"]

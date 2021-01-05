@@ -11,7 +11,7 @@ try:
 except ImportError as e:
     print("Scenedetect not found. Encoding may fail if it tries to use it.")
 
-from parallelencode.core.utils import frame_probe
+from parallelencode.core.utils import frame_probe_fast
 from parallelencode.core.vapoursynth import compose_vapoursynth_pipe
 from parallelencode.callbacks import Callbacks
 
@@ -43,7 +43,7 @@ def pyscene(video, threshold, is_vs, temp, cb: Callbacks):
         # We need to pass the number of frames to the manager, otherwise it won't close the
         # receiving end of the pipe, and will simply sit waiting after vspipe has finished sending
         # the last frame.
-    frames = frame_probe(video)
+    frames = frame_probe_fast(video)
 
     video_manager = VideoManager([str(vspipe_fifo if is_vs else video)])
     scene_manager = SceneManager()

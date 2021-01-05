@@ -175,7 +175,7 @@ def encode(chunk: Chunk, args: Args, cb: Callbacks):
 
 
 def frame_check_output(chunk: Chunk, expected_frames: int) -> int:
-    actual_frames = frame_probe(chunk.output_path)
+    actual_frames = frame_probe_fast(chunk.output_path)
     if actual_frames != expected_frames:
         print(f'Frame Count Differ for Source {chunk.name}: {actual_frames}/{expected_frames}')
     return actual_frames

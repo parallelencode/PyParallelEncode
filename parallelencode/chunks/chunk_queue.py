@@ -7,7 +7,7 @@ from parallelencode.callbacks import Callbacks
 from parallelencode.chunks.chunk import Chunk
 from parallelencode.chunks.resume import read_done_data
 from parallelencode.chunks.split import segment
-from parallelencode.core.utils import frame_probe
+from parallelencode.core.utils import frame_probe_fast
 from parallelencode.encoders import ENCODERS
 
 
@@ -98,7 +98,7 @@ def create_video_queue_vs(args: Args, split_locations: List[int], script: str) -
     :return: A list of chunks
     """
     # add first frame and last frame
-    last_frame = frame_probe(args.input)
+    last_frame = frame_probe_fast(args.input)
     split_locs_fl = [0] + split_locations + [last_frame]
 
     # pair up adjacent members of this list ex: [0, 10, 20, 30] -> [(0, 10), (10, 20), (20, 30)]
@@ -186,7 +186,7 @@ def create_chunk_from_segment(args: Args, index: int, file: Path) -> Chunk:
     ffmpeg_gen_cmd = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'error', '-i', file.as_posix(), '-strict', '-1',
                       '-pix_fmt', args.pix_format, '-bufsize', '50000K', '-f', 'yuv4mpegpipe', '-']
     file_size = file.stat().st_size
-    frames = frame_probe(file)
+    frames = frame_probe_fast(file)
     extension = ENCODERS[args.encoder].output_extension
 
     chunk = Chunk(args.temp, index, ffmpeg_gen_cmd, extension, file_size, frames)
