@@ -11,10 +11,10 @@ def time(video, split_frames, cb: Callbacks):
     frames = frame_probe(video)
     to_add = frames // split_frames
     splits = None
-    if frames % split_frames == 0:
-        splits = list(linspace(split_frames, frames, to_add+1, dtype=int))
-    else:
-        splits = list(linspace(split_frames, frames - frames % split_frames, to_add + 1, dtype=int)) + [frames]
+    splits = list(linspace(split_frames, frames - split_frames - (frames % split_frames), to_add, dtype=int))
+    newsplits = []
+    for i in splits:
+        newsplits.append(i.item())
     cb.run_callback("log", f'Found scenes: {len(splits)}\n')
 
-    return splits
+    return newsplits

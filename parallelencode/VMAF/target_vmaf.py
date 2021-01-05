@@ -122,11 +122,17 @@ def vmaf_probe(chunk: Chunk, q, args: Args):
 
     cmd = probe_cmd(chunk, q, args.ffmpeg_pipe, args.encoder, args.vmaf_rate)
     if args.is_debug:
-        pipes = debug_make_pipes(chunk.ffmpeg_gen_cmd, cmd[0], cmd[1])
-        process_debug_pipes(pipes)
+        err = 1
+        while err != 0:
+            pipes = debug_make_pipes(chunk.ffmpeg_gen_cmd, cmd[0], cmd[1])
+            errorCode = process_debug_pipes(pipes)
     else:
-        pipe = make_pipes(chunk.ffmpeg_gen_cmd, cmd[0], cmd[1])
-        process_pipe(pipe)
+        err = 1
+        while err != 0:
+            pipe = make_pipes(chunk.ffmpeg_gen_cmd, cmd[0], cmd[1])
+            err = process_pipe(pipe)
+            if err != 0:
+                print("Error running encode on chunk: " + str(chunk) + "... Retrying...")
 
     file = call_vmaf(chunk, gen_probes_names(chunk, q), args.n_threads, args.vmaf_path, args.vmaf_res, vmaf_filter=args.vmaf_filter,
                      vmaf_rate=args.vmaf_rate)

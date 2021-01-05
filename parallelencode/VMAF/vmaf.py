@@ -91,10 +91,15 @@ def call_vmaf(chunk: Chunk, encoded: Path, n_threads, model, res,
 
     cmd = (*cmd_in, *filter_complex, distorted + ref + vmaf_filter, *cmd_out)
 
-    ffmpeg_gen_pipe = subprocess.Popen(chunk.ffmpeg_gen_cmd, stdout=PIPE, stderr=STDOUT)
-    pipe = subprocess.Popen(cmd, stdin=ffmpeg_gen_pipe.stdout,
+    err = 1
+    tries = 5
+    while err != 0 and tries > 0:
+        ffmpeg_gen_pipe = subprocess.Popen(chunk.ffmpeg_gen_cmd, stdout=PIPE, stderr=STDOUT)
+        pipe = subprocess.Popen(cmd, stdin=ffmpeg_gen_pipe.stdout,
                             stdout=PIPE, stderr=STDOUT, universal_newlines=True)
-    process_pipe(pipe)
+        err = process_pipe([ffmpeg_gen_pipe, pipe])
+        tries = tries - 1
+        print("Unable to get vmaf. Your ffmpeg may not have vmaf support. Trying " + str(tries) + " more times...")
 
     return fl_path
 

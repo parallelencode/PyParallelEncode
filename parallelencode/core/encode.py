@@ -140,12 +140,16 @@ def encode(chunk: Chunk, args: Args, cb: Callbacks):
         for current_pass in range(1, args.passes + 1):
             try:
                 enc = ENCODERS[args.encoder]
-                pipe = enc.make_encode_pipes(args, chunk, args.passes, current_pass, chunk.output)
+                err = 1
+                while err != 0:
+                    pipe = enc.make_encode_pipes(args, chunk, args.passes, current_pass, chunk.output)
 
-                if not args.is_debug:
-                    process_encoding_pipe(pipe, enc, cb)
-                else:
-                    process_enc_debug_pipes(pipe, enc, cb)
+                    if not args.is_debug:
+                        err = process_encoding_pipe(pipe, enc, cb)
+                    else:
+                        err = process_enc_debug_pipes(pipe, enc, cb)
+                    if err != 0:
+                        print("Error running encode on chunk: " + str(chunk) + "... Retrying...")
 
             except Exception as e:
                 _, _, exc_tb = sys.exc_info()

@@ -38,11 +38,15 @@ def process_debug_pipes(pipes):
         print(f"stderr: {pipes[2].stderr}")
         print(f"\nEncoder encountered an error: {pipes[2].returncode}")
         print('\n'.join(encoder_history))
+    if pipes[2].returncode != 0 or pipes[0].returncode != 0 or pipes[1].returncode != 0:
+        return 1
+    return 0
 
 
 
 
-def process_pipe(pipe):
+def process_pipe(pipes):
+    pipe = pipes[len(pipes) - 1]
     encoder_history = deque(maxlen=20)
     while True:
         line = pipe.stdout.readline().strip()
@@ -58,6 +62,9 @@ def process_pipe(pipe):
         print(f"stderr: {pipe.stderr}")
         print(f"\nEncoder encountered an error: {pipe.returncode}")
         print('\n'.join(encoder_history))
+    if pipe.returncode != 0 or pipes[0].returncode != 0 or pipes[1].returncode != 0:
+        return 1
+    return 0
 
 def process_enc_debug_pipes(pipes, encoder, cb: Callbacks):
     encoder_history = deque(maxlen=20)
@@ -101,10 +108,14 @@ def process_enc_debug_pipes(pipes, encoder, cb: Callbacks):
     if pipes[2].returncode != 0 and pipes[2].returncode != -2:  # -2 is Ctrl+C for aom
         print(f"\nEncoder encountered an error: {pipes[2].returncode}")
         print('\n'.join(encoder_history))
+    if pipes[2].returncode != 0 or pipes[0].returncode != 0 or pipes[1].returncode != 0:
+        return 1
+    return 0
 
-def process_encoding_pipe(pipe, encoder, cb: Callbacks):
+def process_encoding_pipe(pipes, encoder, cb: Callbacks):
     encoder_history = deque(maxlen=20)
     frame = 0
+    pipe = pipes[2]
     while True:
         line = pipe.stdout.readline().strip()
 
@@ -129,6 +140,9 @@ def process_encoding_pipe(pipe, encoder, cb: Callbacks):
     if pipe.returncode != 0 and pipe.returncode != -2:  # -2 is Ctrl+C for aom
         print(f"\nEncoder encountered an error: {pipe.returncode}")
         print('\n'.join(encoder_history))
+    if pipe.returncode != 0 or pipes[0].returncode != 0 or pipes[1].returncode != 0:
+        return 1
+    return 0
 
 
 def make_pipes(ffmpeg_gen_cmd: Command, ffmpeg_cmd, encode_cmd):
@@ -138,7 +152,7 @@ def make_pipes(ffmpeg_gen_cmd: Command, ffmpeg_cmd, encode_cmd):
     pipe = subprocess.Popen(encode_cmd, stdin=ffmpeg_pipe.stdout, stdout=PIPE,
                             stderr=subprocess.STDOUT,
                             universal_newlines=True)
-    return pipe
+    return [ffmpeg_gen_pipe, ffmpeg_pipe, pipe]
 
 
 def debug_make_pipes(ffmpeg_gen_cmd: Command, command: CommandPair):
